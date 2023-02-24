@@ -434,7 +434,7 @@ def read_annotation(data_path, label_path):
         if not imagepath:
             break
         # 获取图片的路径
-        imagepath = data_path + 'WIDER_train/images/' + imagepath + '.jpg'
+        imagepath = data_path + 'WIDER_train/images/' + imagepath
         images.append(imagepath)
         # 根据人脸的数目开始读取所有box
         one_image_bboxes = []
@@ -598,7 +598,7 @@ def delete_old_img(old_image_folder, image_size):
     shutil.rmtree(os.path.join(old_image_folder, str(image_size), 'negative'), ignore_errors=True)
     shutil.rmtree(os.path.join(old_image_folder, str(image_size), 'part'), ignore_errors=True)
     shutil.rmtree(os.path.join(old_image_folder, str(image_size), 'landmark'), ignore_errors=True)
-    
+
     # 删除原来的数据列表文件
     os.remove(os.path.join(old_image_folder, str(image_size), 'positive.txt'))
     os.remove(os.path.join(old_image_folder, str(image_size), 'negative.txt'))
