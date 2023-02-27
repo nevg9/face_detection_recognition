@@ -1,5 +1,6 @@
 import argparse
 import os
+from tkinter.messagebox import NO
 
 import cv2
 import numpy as np
@@ -9,10 +10,8 @@ from utils.utils import generate_bbox, py_nms, convert_to_square
 from utils.utils import pad, calibrate_box, processed_image
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--model_path', type=str, default='infer_models',      help='PNet、RNet、ONet三个模型文件存在的文件夹路径')
-parser.add_argument('-i', '--image_path', type=str, default='dataset/test.jpg',  help='需要预测图像的路径')
+parser.add_argument('--model_path', type=str, default='infer_models',      help='PNet、RNet、ONet三个模型文件存在的文件夹路径')
 args = parser.parse_args()
-
 
 device = torch.device("cuda")
 
@@ -158,7 +157,7 @@ def detect_rnet(im, dets, thresh):
     else:
         return None
 
-    keep = py_nms(boxes, 0.4, mode='Union')
+    keep = py_nms(boxes, 0.6, mode='Union')
     boxes = boxes[keep]
     # 对pnet截取的图像的坐标进行校准，生成rnet的人脸框对于原图的绝对坐标
     boxes_c = calibrate_box(boxes, reg[keep])
@@ -181,6 +180,7 @@ def detect_onet(im, dets, thresh):
         img = img.transpose((2, 0, 1))
         img = (img - 127.5) / 128
         cropped_ims[i, :, :, :] = img
+
     cls_scores, reg, landmark = predict_onet(cropped_ims)
 
     cls_scores = cls_scores[:, 1]
@@ -207,8 +207,7 @@ def detect_onet(im, dets, thresh):
 
 
 # 预测图片
-def infer_image(image_path):
-    im = cv2.imread(image_path)
+def infer_image(im):
     # 调用第一个模型预测
     boxes_c = detect_pnet(im, 20, 0.79, 0.9)
     if boxes_c is None:
@@ -226,8 +225,7 @@ def infer_image(image_path):
 
 
 # 画出人脸框和关键点
-def draw_face(image_path, boxes_c, landmarks):
-    img = cv2.imread(image_path)
+def draw_face(img, boxes_c, landmarks):
     for i in range(boxes_c.shape[0]):
         bbox = boxes_c[i, :4]
         score = boxes_c[i, 4]
@@ -243,17 +241,23 @@ def draw_face(image_path, boxes_c, landmarks):
     for i in range(landmarks.shape[0]):
         for j in range(len(landmarks[i]) // 2):
             cv2.circle(img, (int(landmarks[i][2 * j]), int(int(landmarks[i][2 * j + 1]))), 2, (0, 0, 255))
+
+    img = cv2.resize(img, None, fx=0.2, fy=0.2, interpolation=cv2.INTER_LINEAR)
+
     cv2.imshow('result', img)
-    cv2.waitKey(0)
+    cv2.waitKey(1)
 
 
 if __name__ == '__main__':
-    # 预测图片获取人脸的box和关键点
-    boxes_c, landmarks = infer_image(args.image_path)
-    print(boxes_c)
-    print(landmarks)
-    # 把关键画出来
-    if boxes_c is not None:
-        draw_face(image_path=args.image_path, boxes_c=boxes_c, landmarks=landmarks)
-    else:
-        print('image not have face')
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, img = cap.read()
+        if ret:
+            # 预测图片获取人脸的box和关键点
+            boxes_c, landmarks = infer_image(img)
+            # 把关键画出来
+            if boxes_c is not None:
+                draw_face(img=img, boxes_c=boxes_c, landmarks=landmarks)
+            else:
+                cv2.imshow('result', img)
+                cv2.waitKey(1)
